@@ -1,0 +1,6 @@
+.git
+.runpod
+examples
+outputs
+__pycache__
+*.md

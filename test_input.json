@@ -1,0 +1,8 @@
+{
+  "input": {
+    "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
+    "aspect_ratio": "1:1",
+    "num_inference_steps": 40,
+    "seed": 42
+  }
+}

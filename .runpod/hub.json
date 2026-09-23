@@ -1,0 +1,67 @@
+{
+  "title": "Qwen Image 2.1",
+  "description": "Serverless Qwen/Qwen-Image-2.1: text-to-image, multi-reference image editing (up to 10 images) and native transparent (RGBA) generation.",
+  "type": "serverless",
+  "category": "image",
+  "iconUrl": "https://huggingface.co/front/thumbnails/qwen.png",
+  "config": {
+    "runsOn": "GPU",
+    "containerDiskInGb": 80,
+    "gpuCount": 1,
+    "gpuIds": "ADA_48_PRO,AMPERE_48,ADA_80_PRO,AMPERE_80,HOPPER_141",
+    "allowedCudaVersions": ["12.9", "12.8"],
+    "env": [
+      {
+        "key": "HF_MODEL",
+        "input": {
+          "type": "huggingface",
+          "name": "Hugging Face Model",
+          "description": "Model repo on the Hugging Face Hub",
+          "default": "Qwen/Qwen-Image-2.1",
+          "required": true
+        }
+      },
+      {
+        "key": "PRECISION",
+        "input": {
+          "name": "Model precision",
+          "type": "string",
+          "description": "Inference dtype (bf16 is recommended by the model card)",
+          "options": [
+            { "label": "BF16", "value": "bf16" },
+            { "label": "FP16", "value": "fp16" }
+          ],
+          "default": "bf16"
+        }
+      },
+      {
+        "key": "ENABLE_CPU_OFFLOAD",
+        "input": {
+          "name": "CPU offload",
+          "type": "boolean",
+          "description": "Offload components to CPU (needed for 24 GB GPUs, slower)",
+          "default": false
+        }
+      },
+      {
+        "key": "HF_TOKEN",
+        "input": {
+          "name": "Hugging Face token",
+          "type": "string",
+          "description": "Optional, for gated/private repos and higher download rate limits",
+          "default": ""
+        }
+      }
+    ],
+    "presets": [
+      {
+        "name": "48 GB+ GPU (fast)",
+        "defaults": { "HF_MODEL": "Qwen/Qwen-Image-2.1", "PRECISION": "bf16", "ENABLE_CPU_OFFLOAD": false }
+      },
+      {
+        "name": "24 GB GPU (CPU offload)",
+        "defaults": { "HF_MODEL": "Qwen/Qwen-Image-2.1", "PRECISION": "bf16", "ENABLE_CPU_OFFLOAD": true }
+      }
+    ]
+  }
+}
