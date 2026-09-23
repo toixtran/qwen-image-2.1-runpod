@@ -1,5 +1,7 @@
 # qwen-image-2.1-runpod
 
+[![Runpod](https://api.runpod.io/badge/toixtran/qwen-image-2.1-runpod)](https://console.runpod.io/hub/listing/toixtran/qwen-image-2.1-runpod)
+
 Worker RunPod Serverless cho model [Qwen/Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1). Một endpoint làm được ba việc:
 
 - **Text-to-image**: sinh ảnh từ prompt, độ phân giải tới 2K.
