@@ -18,7 +18,6 @@ test_input.json       # Input mặc định khi chạy handler ở local
 .runpod/
   hub.json            # Cấu hình RunPod Hub
   tests.json          # Test mà RunPod Hub chạy khi publish
-  Dockerfile
 examples/client.py    # Client mẫu: gọi endpoint và lưu ảnh
 ```
 

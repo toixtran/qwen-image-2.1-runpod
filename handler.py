@@ -247,5 +247,4 @@ def handler(job):
         return {"error": "CUDA out of memory. Lower the resolution/num_images or set ENABLE_CPU_OFFLOAD=true."}
 
 
-if __name__ == "__main__":
-    runpod.serverless.start({"handler": handler})
+runpod.serverless.start({"handler": handler})

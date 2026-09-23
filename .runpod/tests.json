@@ -4,12 +4,11 @@
       "name": "text_to_image",
       "input": {
         "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
-        "width": 1024,
-        "height": 1024,
+        "resolution": "1k",
         "num_inference_steps": 20,
         "seed": 42
       },
-      "timeout": 600000
+      "timeout": 1800000
     },
     {
       "name": "image_edit",
@@ -19,19 +18,18 @@
         "num_inference_steps": 20,
         "seed": 42
       },
-      "timeout": 600000
+      "timeout": 1800000
     },
     {
       "name": "transparent",
       "input": {
         "prompt": "A cute cartoon dragon sticker.",
         "transparent": true,
-        "width": 1024,
-        "height": 1024,
+        "resolution": "1k",
         "num_inference_steps": 20,
         "seed": 42
       },
-      "timeout": 600000
+      "timeout": 1800000
     }
   ],
   "config": {
