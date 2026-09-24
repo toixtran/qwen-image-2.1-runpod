@@ -1,8 +1,9 @@
 # PyTorch 2.7.1 + CUDA 12.8 (Qwen-Image-2.1 needs torch>=2.4)
 FROM runpod/pytorch:1.0.2-cu1281-torch271-ubuntu2204
 
+# hf_transfer is deprecated in huggingface_hub>=1.0; Xet high-performance mode replaces it.
 ENV PYTHONUNBUFFERED=1 \
-    HF_HUB_ENABLE_HF_TRANSFER=1
+    HF_XET_HIGH_PERFORMANCE=1
 
 WORKDIR /app
 

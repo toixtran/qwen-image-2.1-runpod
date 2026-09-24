@@ -11,13 +11,41 @@ import random
 import time
 from io import BytesIO
 
-# Pick the HF cache before importing diffusers: explicit HF_HOME > weights baked into
-# the image > RunPod network volume (persists across cold starts) > library default.
-if "HF_HOME" not in os.environ:
-    if os.path.isdir("/models/huggingface"):
-        os.environ["HF_HOME"] = "/models/huggingface"
-    elif os.path.isdir("/runpod-volume"):
-        os.environ["HF_HOME"] = "/runpod-volume/huggingface"
+MODEL_ID = os.environ.get("HF_MODEL", "Qwen/Qwen-Image-2.1")
+
+# Filled by RunPod when the endpoint's "Model" field is set: no download, and no billing for download time.
+RUNPOD_MODEL_CACHE = "/runpod-volume/huggingface-cache/hub"
+
+
+def resolve_cached_snapshot(model_id):
+    """Return the local snapshot dir of a RunPod-cached model, or None."""
+    model_root = os.path.join(RUNPOD_MODEL_CACHE, "models--" + model_id.replace("/", "--"))
+    snapshots = os.path.join(model_root, "snapshots")
+    ref = os.path.join(model_root, "refs", "main")
+    if os.path.isfile(ref):
+        with open(ref) as f:
+            candidate = os.path.join(snapshots, f.read().strip())
+        if os.path.isdir(candidate):
+            return candidate
+    if os.path.isdir(snapshots):
+        versions = sorted(os.listdir(snapshots))
+        if versions:
+            return os.path.join(snapshots, versions[0])
+    return None
+
+
+# Resolve where weights come from before importing diffusers, since huggingface_hub reads these env vars on import.
+# Order: RunPod cached model > explicit HF_HOME > weights baked into the image > network volume > library default.
+MODEL_SOURCE = resolve_cached_snapshot(MODEL_ID)
+if MODEL_SOURCE:
+    os.environ["HF_HUB_OFFLINE"] = "1"
+else:
+    MODEL_SOURCE = MODEL_ID
+    if "HF_HOME" not in os.environ:
+        if os.path.isdir("/models/huggingface"):
+            os.environ["HF_HOME"] = "/models/huggingface"
+        elif os.path.isdir("/runpod-volume"):
+            os.environ["HF_HOME"] = "/runpod-volume/huggingface"
 
 import requests
 import runpod
@@ -25,11 +53,14 @@ import torch
 from diffusers import QwenImage21Pipeline
 from PIL import Image
 
-MODEL_ID = os.environ.get("HF_MODEL", "Qwen/Qwen-Image-2.1")
 PRECISION = os.environ.get("PRECISION", "bf16").lower()
 ENABLE_CPU_OFFLOAD = os.environ.get("ENABLE_CPU_OFFLOAD", "false").lower() in ("1", "true", "yes")
 MAX_PIXELS = int(os.environ.get("MAX_PIXELS", str(2752 * 1536)))
-MAX_IMAGES_PER_JOB = int(os.environ.get("MAX_IMAGES_PER_JOB", "4"))
+MAX_IMAGES_PER_JOB = int(os.environ.get("MAX_IMAGES_PER_JOB", "1"))
+DEFAULT_RESOLUTION = os.environ.get("DEFAULT_RESOLUTION", "1k").lower()
+DEFAULT_STEPS = int(os.environ.get("DEFAULT_STEPS", "40"))
+# Optional diffusers attention backend for the cached decode steps, e.g. "_native_cudnn" or "flash_hub".
+ATTENTION_BACKEND = os.environ.get("ATTENTION_BACKEND", "").strip()
 MAX_REFERENCE_IMAGES = 10
 DOWNLOAD_TIMEOUT = 30
 
@@ -68,13 +99,19 @@ def load_pipeline():
         raise ValueError(f"PRECISION must be one of {list(DTYPES)}, got {PRECISION!r}")
 
     started = time.time()
-    pipe = QwenImage21Pipeline.from_pretrained(MODEL_ID, torch_dtype=DTYPES[PRECISION])
     if ENABLE_CPU_OFFLOAD:
+        pipe = QwenImage21Pipeline.from_pretrained(MODEL_SOURCE, torch_dtype=DTYPES[PRECISION])
         pipe.enable_model_cpu_offload()
     else:
-        pipe.to("cuda")
+        # Load weights straight onto the GPU instead of staging 33 GB in CPU RAM first.
+        pipe = QwenImage21Pipeline.from_pretrained(MODEL_SOURCE, torch_dtype=DTYPES[PRECISION], device_map="cuda")
+    if ATTENTION_BACKEND:
+        pipe.transformer.set_attention_backend(ATTENTION_BACKEND)
     pipe.set_progress_bar_config(disable=True)
-    print(f"[init] loaded {MODEL_ID} ({PRECISION}, offload={ENABLE_CPU_OFFLOAD}) in {time.time() - started:.1f}s")
+    print(
+        f"[init] loaded {MODEL_SOURCE} ({PRECISION}, offload={ENABLE_CPU_OFFLOAD}, "
+        f"attention={ATTENTION_BACKEND or 'default'}) in {time.time() - started:.1f}s"
+    )
     return pipe
 
 
@@ -126,7 +163,7 @@ def collect_images(job_input):
 def resolve_size(job_input, has_images):
     width, height = job_input.get("width"), job_input.get("height")
     aspect_ratio = job_input.get("aspect_ratio")
-    resolution = str(job_input.get("resolution", "2k")).lower()
+    resolution = str(job_input.get("resolution", DEFAULT_RESOLUTION)).lower()
     if resolution not in RESOLUTIONS:
         raise InputError(f"'resolution' must be one of {list(RESOLUTIONS)}, got {resolution!r}.")
     sizes = RESOLUTIONS[resolution]
@@ -194,7 +231,7 @@ def handler(job):
         if not 1 <= num_images <= MAX_IMAGES_PER_JOB:
             raise InputError(f"'num_images' must be between 1 and {MAX_IMAGES_PER_JOB}.")
 
-        steps = int(job_input.get("num_inference_steps", 40))
+        steps = int(job_input.get("num_inference_steps", DEFAULT_STEPS))
         if not 1 <= steps <= 100:
             raise InputError("'num_inference_steps' must be between 1 and 100.")
 

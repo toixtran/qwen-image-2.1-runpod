@@ -9,7 +9,10 @@
     "containerDiskInGb": 80,
     "gpuCount": 1,
     "gpuIds": "ADA_48_PRO,AMPERE_48,ADA_80_PRO,AMPERE_80,HOPPER_141",
-    "allowedCudaVersions": ["12.9", "12.8"],
+    "allowedCudaVersions": [
+      "12.9",
+      "12.8"
+    ],
     "env": [
       {
         "key": "HF_MODEL",
@@ -28,8 +31,14 @@
           "type": "string",
           "description": "Inference dtype (bf16 is recommended by the model card)",
           "options": [
-            { "label": "BF16", "value": "bf16" },
-            { "label": "FP16", "value": "fp16" }
+            {
+              "label": "BF16",
+              "value": "bf16"
+            },
+            {
+              "label": "FP16",
+              "value": "fp16"
+            }
           ],
           "default": "bf16"
         }
@@ -41,6 +50,34 @@
           "type": "boolean",
           "description": "Offload components to CPU (needed for 24 GB GPUs, slower)",
           "default": false
+        }
+      },
+      {
+        "key": "DEFAULT_RESOLUTION",
+        "input": {
+          "name": "Default resolution",
+          "type": "string",
+          "description": "Size used when a request sets no resolution. 1k (~1 MP) costs about 4x less than 2k (~4 MP).",
+          "options": [
+            {
+              "label": "1K (cheaper, faster)",
+              "value": "1k"
+            },
+            {
+              "label": "2K (model card)",
+              "value": "2k"
+            }
+          ],
+          "default": "1k"
+        }
+      },
+      {
+        "key": "DEFAULT_STEPS",
+        "input": {
+          "name": "Default steps",
+          "type": "number",
+          "description": "Denoising steps used when a request sets none. Fewer steps are faster and cheaper, with less detail.",
+          "default": 40
         }
       },
       {
@@ -56,11 +93,21 @@
     "presets": [
       {
         "name": "48 GB+ GPU (fast)",
-        "defaults": { "HF_MODEL": "Qwen/Qwen-Image-2.1", "PRECISION": "bf16", "ENABLE_CPU_OFFLOAD": false }
+        "defaults": {
+          "HF_MODEL": "Qwen/Qwen-Image-2.1",
+          "PRECISION": "bf16",
+          "ENABLE_CPU_OFFLOAD": false,
+          "DEFAULT_RESOLUTION": "1k"
+        }
       },
       {
         "name": "24 GB GPU (CPU offload)",
-        "defaults": { "HF_MODEL": "Qwen/Qwen-Image-2.1", "PRECISION": "bf16", "ENABLE_CPU_OFFLOAD": true }
+        "defaults": {
+          "HF_MODEL": "Qwen/Qwen-Image-2.1",
+          "PRECISION": "bf16",
+          "ENABLE_CPU_OFFLOAD": true,
+          "DEFAULT_RESOLUTION": "1k"
+        }
       }
     ]
   }

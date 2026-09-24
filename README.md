@@ -56,12 +56,13 @@ Sau đó vào RunPod Console → Serverless → New Endpoint, chọn image vừa
 
 ### Nơi lưu model
 
-Handler tự chọn thư mục cache theo thứ tự sau:
+Handler tự chọn nguồn model theo thứ tự sau:
 
-1. Biến `HF_HOME`, nếu bạn đặt.
-2. `/models/huggingface`, nếu model đã được bake vào image.
-3. `/runpod-volume/huggingface`, nếu có gắn Network Volume.
-4. Cache mặc định của Hugging Face.
+1. **Model do RunPod cache sẵn** (`/runpod-volume/huggingface-cache/hub`). Đây là cách nên dùng: khi tạo endpoint, điền `Qwen/Qwen-Image-2.1` vào mục **Model**. RunPod tải model sẵn lên máy trước khi worker chạy, nên cold start không phải tải và không bị tính tiền thời gian tải. Khi tìm thấy model ở đây, handler chạy ở chế độ offline.
+2. Biến `HF_HOME`, nếu bạn đặt.
+3. `/models/huggingface`, nếu model đã được bake vào image.
+4. `/runpod-volume/huggingface`, nếu có gắn Network Volume.
+5. Cache mặc định của Hugging Face, tức tải lại 33 GB ở mỗi lần cold start.
 
 ## Biến môi trường
 
@@ -70,8 +71,11 @@ Handler tự chọn thư mục cache theo thứ tự sau:
 | `HF_MODEL` | `Qwen/Qwen-Image-2.1` | Repo model trên Hugging Face |
 | `PRECISION` | `bf16` | `bf16`, `fp16` hoặc `fp32` |
 | `ENABLE_CPU_OFFLOAD` | `false` | Bật `enable_model_cpu_offload()` cho GPU ít VRAM |
+| `DEFAULT_RESOLUTION` | `1k` | Kích thước khi request không truyền `resolution`. `1k` rẻ hơn `2k` khoảng 4 lần |
+| `DEFAULT_STEPS` | `40` | Số bước khi request không truyền `num_inference_steps` |
+| `ATTENTION_BACKEND` | – | Attention backend của diffusers cho các bước decode, ví dụ `_native_cudnn`. Để trống sẽ dùng SDPA mặc định |
 | `MAX_PIXELS` | `4227072` (2752×1536) | Giới hạn số pixel `width*height` |
-| `MAX_IMAGES_PER_JOB` | `4` | Giới hạn `num_images` trong một job |
+| `MAX_IMAGES_PER_JOB` | `1` | Giới hạn `num_images` trong một job |
 | `HF_TOKEN` | – | Token Hugging Face, không bắt buộc |
 | `HF_HOME` | tự chọn | Thư mục cache model |
 
@@ -83,9 +87,9 @@ Handler tự chọn thư mục cache theo thứ tự sau:
 | `images` | string[] | – | 1–10 ảnh tham chiếu, dạng URL, base64 hoặc data URI |
 | `image` / `image_url` / `image_base64` | string | – | Cách viết ngắn khi chỉ có một ảnh |
 | `aspect_ratio` | string | `1:1` (text-to-image) | `1:1`, `4:3`, `3:4`, `3:2`, `2:3`, `16:9`, `9:16`, lấy theo kích thước khuyến nghị của model card |
-| `resolution` | string | `2k` | `2k` dùng bảng kích thước của model card (~4 MP). `1k` dùng bản nhỏ (~1 MP, nhanh hơn khoảng 4 lần), xem bảng bên dưới |
+| `resolution` | string | `DEFAULT_RESOLUTION` (`1k`) | `2k` dùng bảng kích thước của model card (~4 MP). `1k` dùng bản nhỏ (~1 MP, nhanh hơn khoảng 4 lần), xem bảng bên dưới |
 | `width`, `height` | int | – | Kích thước tùy chỉnh, được làm tròn xuống bội số của 32. Bị bỏ qua nếu có `aspect_ratio` |
-| `num_inference_steps` | int | `40` | Số bước khử nhiễu, từ 1 đến 100 |
+| `num_inference_steps` | int | `DEFAULT_STEPS` (`40`) | Số bước khử nhiễu, từ 1 đến 100 |
 | `seed` | int | ngẫu nhiên | Truyền `-1` hoặc bỏ trống để lấy seed ngẫu nhiên |
 | `num_images` | int | `1` | Số ảnh sinh ra |
 | `transparent` | bool | `false` | Tự thêm template prompt RGBA của model card |
