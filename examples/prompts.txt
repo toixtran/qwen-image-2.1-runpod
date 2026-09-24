@@ -1,0 +1,21 @@
+# Test prompts: each line tests a different strength of Qwen-Image-2.1.
+# Photorealism / fine detail
+1|A photorealistic strawberry with a human face, including human eyes, a nose, and a mouth, highly detailed
+# English text rendering
+2|A neon shop sign that reads "QWEN IMAGE 2.1", rainy night, reflections on wet pavement, cinematic
+# Vietnamese text with diacritics
+3|A street food stall in Hanoi at dusk with a hand-painted wooden sign that reads "PHỞ BÒ GIA TRUYỀN", steam rising from the pots, warm lantern light, photorealistic
+# Portrait lighting and skin texture
+4|Close-up portrait of an elderly Vietnamese fisherman with deep wrinkles, golden hour side lighting, shallow depth of field, 85mm lens, photorealistic
+# Long text and layout (poster)
+5|A minimalist coffee shop menu board on a white wall, titled "MORNING MENU", listing "Espresso 35k", "Latte 45k", "Cold Brew 50k" in clean black sans-serif typography
+# Product photography
+6|A luxury perfume bottle made of frosted glass on a black marble surface, soft studio lighting, water droplets, commercial product photography
+# Complex scene with many objects
+7|A busy Tokyo crossing at night seen from above, hundreds of people with colorful umbrellas, glowing billboards, light rain, highly detailed
+# Illustration style
+8|A cute red panda astronaut floating inside a spaceship, children's book illustration, soft watercolor textures, pastel colors
+# Transparent background (RGBA): uses the model card's prompt template
+9|This is an RGBA image with transparency. A cute cartoon dragon sticker with a thick white outline. The image has alpha channel and the background is transparent.
+# Architecture and composition
+10|A modern tropical villa built into a cliff above the ocean, infinity pool, sunset, architectural photography, wide angle

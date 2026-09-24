@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .env
 outputs/
+output/
+.DS_Store

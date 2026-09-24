@@ -8,7 +8,7 @@
     "runsOn": "GPU",
     "containerDiskInGb": 80,
     "gpuCount": 1,
-    "gpuIds": "ADA_48_PRO,AMPERE_48,ADA_80_PRO,AMPERE_80,HOPPER_141",
+    "gpuIds": "ADA_48_PRO,AMPERE_48,ADA_80_PRO,AMPERE_80,HOPPER_141,ADA_24",
     "allowedCudaVersions": [
       "12.9",
       "12.8"
@@ -41,6 +41,29 @@
             }
           ],
           "default": "bf16"
+        }
+      },
+      {
+        "key": "QUANTIZATION",
+        "input": {
+          "name": "Quantization",
+          "type": "string",
+          "description": "Quantize the official weights at load time. none = BF16 (~33 GB VRAM), int8 (~18 GB), nf4 = 4-bit (~11 GB). Lower VRAM, lower quality, slower per image.",
+          "options": [
+            {
+              "label": "None (BF16)",
+              "value": "none"
+            },
+            {
+              "label": "INT8",
+              "value": "int8"
+            },
+            {
+              "label": "NF4 (4-bit)",
+              "value": "nf4"
+            }
+          ],
+          "default": "none"
         }
       },
       {
@@ -97,16 +120,28 @@
           "HF_MODEL": "Qwen/Qwen-Image-2.1",
           "PRECISION": "bf16",
           "ENABLE_CPU_OFFLOAD": false,
-          "DEFAULT_RESOLUTION": "1k"
+          "DEFAULT_RESOLUTION": "1k",
+          "QUANTIZATION": "none"
         }
       },
       {
-        "name": "24 GB GPU (CPU offload)",
+        "name": "24 GB GPU (INT8)",
         "defaults": {
           "HF_MODEL": "Qwen/Qwen-Image-2.1",
           "PRECISION": "bf16",
-          "ENABLE_CPU_OFFLOAD": true,
-          "DEFAULT_RESOLUTION": "1k"
+          "DEFAULT_RESOLUTION": "1k",
+          "QUANTIZATION": "int8",
+          "ENABLE_CPU_OFFLOAD": false
+        }
+      },
+      {
+        "name": "24 GB GPU (NF4 4-bit)",
+        "defaults": {
+          "HF_MODEL": "Qwen/Qwen-Image-2.1",
+          "PRECISION": "bf16",
+          "DEFAULT_RESOLUTION": "1k",
+          "QUANTIZATION": "nf4",
+          "ENABLE_CPU_OFFLOAD": false
         }
       }
     ]

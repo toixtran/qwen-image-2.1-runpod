@@ -27,9 +27,9 @@ Tổng trọng số khoảng **33 GB** (text encoder Qwen3-VL 17.5 GB, transform
 
 | GPU | Cấu hình |
 |---|---|
-| 48 GB (L40S, A6000, RTX 6000 Ada) | `ENABLE_CPU_OFFLOAD=false`, khuyến nghị |
-| 80 GB (A100, H100) | `ENABLE_CPU_OFFLOAD=false`, nhanh nhất |
-| 24 GB (4090, L4, A5000) | `ENABLE_CPU_OFFLOAD=true`, chậm hơn nhiều |
+| 48 GB (L40S, A6000, RTX 6000 Ada) | `QUANTIZATION=none`, khuyến nghị |
+| 80 GB (A100, H100) | `QUANTIZATION=none`, nhanh nhất |
+| 24 GB (4090, L4, A5000) | `QUANTIZATION=int8` hoặc `nf4`, xem mục "Lượng tử hoá" |
 
 Nên để container disk từ 80 GB trở lên, hoặc gắn **Network Volume** để không phải tải lại model mỗi lần cold start.
 
@@ -37,7 +37,7 @@ Nên để container disk từ 80 GB trở lên, hoặc gắn **Network Volume**
 
 ### Cách 1: RunPod Hub
 
-Đưa repo này lên GitHub, rồi publish lên RunPod Hub. Hub đọc cấu hình từ thư mục `.runpod/` và có sẵn hai preset: GPU 48 GB+ và GPU 24 GB có offload.
+Đưa repo này lên GitHub, rồi publish lên RunPod Hub. Hub đọc cấu hình từ thư mục `.runpod/` và có sẵn ba preset: GPU 48 GB+ (BF16), GPU 24 GB (INT8) và GPU 24 GB (NF4 4-bit).
 
 ### Cách 2: Build image rồi tạo endpoint
 
@@ -64,13 +64,26 @@ Handler tự chọn nguồn model theo thứ tự sau:
 4. `/runpod-volume/huggingface`, nếu có gắn Network Volume.
 5. Cache mặc định của Hugging Face, tức tải lại 33 GB ở mỗi lần cold start.
 
+## Lượng tử hoá
+
+Biến `QUANTIZATION` lượng tử hoá transformer và text encoder của model chính thức ngay lúc nạp, bằng bitsandbytes. VAE giữ nguyên độ chính xác. Đây là biến môi trường của endpoint: đổi giá trị rồi khởi động lại worker là có hiệu lực, không cần build lại image, và không chỉnh theo từng request được.
+
+| `QUANTIZATION` | VRAM trọng số (ước tính) | GPU phù hợp | Chất lượng |
+|---|---|---|---|
+| `none` | ~33 GB | 48 GB (L40S, A6000) | Như model card |
+| `int8` | ~18 GB | 24 GB (RTX 4090, L4) | Giảm nhẹ |
+| `nf4` | ~11 GB | 16–24 GB | Giảm rõ hơn, nhất là chữ viết trong ảnh |
+
+Bản lượng tử hoá dùng GPU rẻ hơn mỗi giờ nhưng mỗi ảnh sinh chậm hơn BF16, và cold start lâu hơn vì phải lượng tử hoá lúc nạp. Nên so thời gian mỗi ảnh và chất lượng thực tế trước khi chọn. Các con số trên chưa được đo trên Qwen-Image-2.1.
+
 ## Biến môi trường
 
 | Biến | Mặc định | Mô tả |
 |---|---|---|
 | `HF_MODEL` | `Qwen/Qwen-Image-2.1` | Repo model trên Hugging Face |
 | `PRECISION` | `bf16` | `bf16`, `fp16` hoặc `fp32` |
-| `ENABLE_CPU_OFFLOAD` | `false` | Bật `enable_model_cpu_offload()` cho GPU ít VRAM |
+| `QUANTIZATION` | `none` | Lượng tử hoá model chính thức ngay khi nạp: `none` (BF16, ~33 GB), `int8` (~18 GB), `nf4` (4-bit, ~11 GB). Xem mục "Lượng tử hoá" |
+| `ENABLE_CPU_OFFLOAD` | `false` | Bật `enable_model_cpu_offload()` cho GPU ít VRAM. Không dùng được cùng `int8` |
 | `DEFAULT_RESOLUTION` | `1k` | Kích thước khi request không truyền `resolution`. `1k` rẻ hơn `2k` khoảng 4 lần |
 | `DEFAULT_STEPS` | `40` | Số bước khi request không truyền `num_inference_steps` |
 | `ATTENTION_BACKEND` | – | Attention backend của diffusers cho các bước decode, ví dụ `_native_cudnn`. Để trống sẽ dùng SDPA mặc định |

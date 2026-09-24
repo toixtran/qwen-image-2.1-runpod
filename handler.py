@@ -54,6 +54,8 @@ from diffusers import QwenImage21Pipeline
 from PIL import Image
 
 PRECISION = os.environ.get("PRECISION", "bf16").lower()
+# On-the-fly quantization of the official BF16 weights: none | int8 | nf4 (4-bit).
+QUANTIZATION = os.environ.get("QUANTIZATION", "none").strip().lower()
 ENABLE_CPU_OFFLOAD = os.environ.get("ENABLE_CPU_OFFLOAD", "false").lower() in ("1", "true", "yes")
 MAX_PIXELS = int(os.environ.get("MAX_PIXELS", str(2752 * 1536)))
 MAX_IMAGES_PER_JOB = int(os.environ.get("MAX_IMAGES_PER_JOB", "1"))
@@ -94,22 +96,60 @@ RGBA_SUFFIX = "The image has alpha channel and the background is transparent."
 DTYPES = {"bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}
 
 
+def build_quantization_config():
+    """Quantize the transformer and text encoder (the VAE is small and stays in full precision)."""
+    if QUANTIZATION == "none":
+        return None
+    if QUANTIZATION not in ("int8", "nf4"):
+        raise ValueError(f"QUANTIZATION must be none, int8 or nf4, got {QUANTIZATION!r}")
+
+    from diffusers import BitsAndBytesConfig as DiffusersBnbConfig
+    from diffusers.quantizers import PipelineQuantizationConfig
+    from transformers import BitsAndBytesConfig as TransformersBnbConfig
+
+    if QUANTIZATION == "int8":
+        kwargs = {"load_in_8bit": True}
+    else:
+        kwargs = {
+            "load_in_4bit": True,
+            "bnb_4bit_quant_type": "nf4",
+            "bnb_4bit_compute_dtype": DTYPES[PRECISION],
+        }
+    # One config per library: passing quant_backend instead makes diffusers require identical
+    # BitsAndBytesConfig signatures in diffusers and transformers, which breaks across versions.
+    return PipelineQuantizationConfig(
+        quant_mapping={
+            "transformer": DiffusersBnbConfig(**kwargs),
+            "text_encoder": TransformersBnbConfig(**kwargs),
+        }
+    )
+
+
 def load_pipeline():
     if PRECISION not in DTYPES:
         raise ValueError(f"PRECISION must be one of {list(DTYPES)}, got {PRECISION!r}")
 
     started = time.time()
-    if ENABLE_CPU_OFFLOAD:
-        pipe = QwenImage21Pipeline.from_pretrained(MODEL_SOURCE, torch_dtype=DTYPES[PRECISION])
+    load_kwargs = {"torch_dtype": DTYPES[PRECISION]}
+    quantization_config = build_quantization_config()
+    if quantization_config is not None:
+        load_kwargs["quantization_config"] = quantization_config
+
+    # bitsandbytes 8-bit weights cannot be moved between CPU and GPU, so quantized models stay on the GPU.
+    offload = ENABLE_CPU_OFFLOAD and QUANTIZATION != "int8"
+    if ENABLE_CPU_OFFLOAD and not offload:
+        print("[init] ENABLE_CPU_OFFLOAD is ignored with QUANTIZATION=int8")
+    if offload:
+        pipe = QwenImage21Pipeline.from_pretrained(MODEL_SOURCE, **load_kwargs)
         pipe.enable_model_cpu_offload()
     else:
-        # Load weights straight onto the GPU instead of staging 33 GB in CPU RAM first.
-        pipe = QwenImage21Pipeline.from_pretrained(MODEL_SOURCE, torch_dtype=DTYPES[PRECISION], device_map="cuda")
+        # Load weights straight onto the GPU instead of staging them in CPU RAM first.
+        pipe = QwenImage21Pipeline.from_pretrained(MODEL_SOURCE, device_map="cuda", **load_kwargs)
     if ATTENTION_BACKEND:
         pipe.transformer.set_attention_backend(ATTENTION_BACKEND)
     pipe.set_progress_bar_config(disable=True)
     print(
-        f"[init] loaded {MODEL_SOURCE} ({PRECISION}, offload={ENABLE_CPU_OFFLOAD}, "
+        f"[init] loaded {MODEL_SOURCE} ({PRECISION}, quantization={QUANTIZATION}, offload={offload}, "
         f"attention={ATTENTION_BACKEND or 'default'}) in {time.time() - started:.1f}s"
     )
     return pipe

@@ -3,6 +3,7 @@ runpod>=1.12.0
 git+https://github.com/huggingface/diffusers@0121a91f9d419ff7234c8a5923f82c244e6f1914
 transformers>=5.17
 accelerate
+bitsandbytes
 safetensors
 huggingface_hub>=1.0
 pillow
